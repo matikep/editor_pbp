@@ -1,0 +1,21 @@
+services:
+  api:
+    build: ./backend
+    volumes:
+      - whisper_models:/data/models
+      - sessions_data:/data/sessions
+    environment:
+      - WHISPER_MODEL_SIZE=small
+    expose:
+      - "8000"
+
+  web:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  whisper_models:
+  sessions_data:

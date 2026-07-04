@@ -1,0 +1,79 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: #111827;
+  color: #e5e7eb;
+  margin: 0;
+}
+
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.dropzone {
+  border: 2px dashed #4b5563;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.dropzone:hover {
+  border-color: #6b7280;
+}
+
+.player {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.error {
+  color: #f87171;
+}
+
+.summary {
+  color: #9ca3af;
+}
+
+.transcript {
+  background: #1f2937;
+  border-radius: 8px;
+  padding: 1rem;
+  line-height: 2;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.word {
+  cursor: pointer;
+}
+
+.word.flagged {
+  background: #fbbf24;
+  color: #111827;
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

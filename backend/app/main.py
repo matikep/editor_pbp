@@ -83,6 +83,45 @@ async def transcribe(file: UploadFile = File(...)):
     return {"id": session_id, "state": "queued"}
 
 
+@app.post("/upload/init")
+async def upload_init():
+    session_id = str(uuid.uuid4())
+    d = SESSIONS_DIR / session_id
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "audio.part").touch()
+    return {"id": session_id}
+
+
+@app.post("/upload/chunk/{session_id}")
+async def upload_chunk(session_id: str, index: int, file: UploadFile = File(...)):
+    d = session_dir(session_id)
+    part_path = d / "audio.part"
+    if not part_path.exists():
+        raise HTTPException(status_code=409, detail="Upload no iniciado o ya completado")
+    with open(part_path, "ab") as f:
+        shutil.copyfileobj(file.file, f)
+    return {"index": index, "size": part_path.stat().st_size}
+
+
+@app.post("/upload/complete/{session_id}")
+async def upload_complete(session_id: str, filename: str = "audio.wav"):
+    d = session_dir(session_id)
+    part_path = d / "audio.part"
+    if not part_path.exists():
+        raise HTTPException(status_code=409, detail="Upload no iniciado o ya completado")
+
+    ext = Path(filename).suffix or ".wav"
+    audio_path = d / f"audio{ext}"
+    part_path.replace(audio_path)
+
+    write_status(d, state="queued", progress=0.0)
+    threading.Thread(
+        target=run_transcription, args=(session_id, audio_path), daemon=True
+    ).start()
+
+    return {"id": session_id, "state": "queued"}
+
+
 @app.get("/transcribe/status/{session_id}")
 async def transcribe_status(session_id: str):
     d = session_dir(session_id)

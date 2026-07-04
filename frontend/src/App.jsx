@@ -8,6 +8,7 @@ export default function App() {
   const [audioUrl, setAudioUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(null); // null | 0..1
+  const [phase, setPhase] = useState(null); // null | "upload" | "transcribe"
   const [error, setError] = useState(null);
   const [censoring, setCensoring] = useState(false);
   const audioRef = useRef(null);
@@ -28,16 +29,8 @@ export default function App() {
     const url = URL.createObjectURL(file);
     setAudioUrl(url);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await fetch(`${API_BASE}/transcribe`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error(`Error ${res.status} al transcribir`);
-      const { id } = await res.json();
+      const id = await uploadInChunks(file);
       const data = await pollTranscription(id);
       setSession(data);
 
@@ -51,7 +44,43 @@ export default function App() {
     } finally {
       setLoading(false);
       setProgress(null);
+      setPhase(null);
     }
+  }
+
+  // Chunks de 30MB: por debajo del limite de 100MB por request de Cloudflare
+  const CHUNK_SIZE = 30 * 1024 * 1024;
+
+  async function uploadInChunks(file) {
+    setPhase("upload");
+    setProgress(0);
+
+    const initRes = await fetch(`${API_BASE}/upload/init`, { method: "POST" });
+    if (!initRes.ok) throw new Error(`Error ${initRes.status} al iniciar subida`);
+    const { id } = await initRes.json();
+
+    const total = Math.ceil(file.size / CHUNK_SIZE);
+    for (let i = 0; i < total; i++) {
+      const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const fd = new FormData();
+      fd.append("file", chunk, "chunk");
+      const res = await fetch(`${API_BASE}/upload/chunk/${id}?index=${i}`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) throw new Error(`Error ${res.status} al subir audio`);
+      setProgress((i + 1) / total);
+    }
+
+    const doneRes = await fetch(
+      `${API_BASE}/upload/complete/${id}?filename=${encodeURIComponent(file.name)}`,
+      { method: "POST" }
+    );
+    if (!doneRes.ok) throw new Error(`Error ${doneRes.status} al finalizar subida`);
+
+    setPhase("transcribe");
+    setProgress(0);
+    return id;
   }
 
   async function pollTranscription(id) {
@@ -161,9 +190,9 @@ export default function App() {
       {error && <p className="error">{error}</p>}
       {loading && (
         <p>
-          {progress === null
-            ? "Subiendo audio..."
-            : `Transcribiendo audio... ${Math.round(progress * 100)}%`}
+          {phase === "upload"
+            ? `Subiendo audio... ${Math.round((progress ?? 0) * 100)}%`
+            : `Transcribiendo audio... ${Math.round((progress ?? 0) * 100)}%`}
         </p>
       )}
 

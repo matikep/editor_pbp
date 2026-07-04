@@ -1,0 +1,6 @@
+# Solo para desarrollo local: docker compose lo carga automaticamente,
+# Coolify lo ignora porque usa -f docker-compose.yml explicitamente.
+services:
+  web:
+    ports:
+      - "8080:80"
